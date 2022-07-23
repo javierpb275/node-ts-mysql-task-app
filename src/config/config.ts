@@ -1,5 +1,10 @@
 export default {
-  DB: {},
+  DB: {
+    HOST: process.env.DB_HOST || "somedbhost",
+    USER: process.env.DB_USER || "somedbuser",
+    PASSWORD: process.env.DB_PASSWORD || "somedbpassword",
+    NAME: process.env.DB_NAME || "somedbname",
+  },
   AUTH: {
     ACCESS_TOKEN_SECRET:
       process.env.ACCESS_TOKEN_SECRET || "someaccesstokensecret",
