@@ -35,7 +35,7 @@ export const auth = async (
   } catch (err) {
     res.status(401).send({
       error: true,
-      data: { message: "You are unauthorized", error: err },
+      data: { message: "You are not authorized", error: err },
     });
   }
 };
