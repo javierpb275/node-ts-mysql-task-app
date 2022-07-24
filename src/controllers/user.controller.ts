@@ -3,7 +3,11 @@ import jwt from "jsonwebtoken";
 import { Pool } from "mysql2";
 import config from "../config/config";
 import { connect } from "../db/mysql.connection";
-import { generateToken, hashPassword } from "../helpers/authentication.helper";
+import {
+  comparePassword,
+  generateToken,
+  hashPassword,
+} from "../helpers/authentication.helper";
 import {
   isCorrectEmail,
   isSecurePassword,
@@ -133,7 +137,7 @@ export default class UserController {
       return res.status(201).send({
         error: false,
         data: {
-          message: "User created successfully.",
+          message: "Signed up successfully.",
           user: {
             username: newUser.username,
             email: newUser.email,
@@ -148,6 +152,101 @@ export default class UserController {
         error: true,
         data: { message: "Error creating user.", error: err },
       });
+    }
+  }
+  public static async signIn(req: Request, res: Response): Promise<Response> {
+    const user: UserModel = req.body;
+    if (!user.email) {
+      return res
+        .status(400)
+        .send({ error: true, data: { message: "Please, provide an email." } });
+    }
+    if (!user.password) {
+      return res.status(400).send({
+        error: true,
+        data: { message: "Please, provide a password." },
+      });
+    }
+    try {
+      const conn = await connect();
+      const response: any[] = await conn.query(
+        `SELECT * FROM users WHERE email = ?`,
+        [user.email]
+      );
+      const users: UserModel[] = response[0];
+      if (!users.length) {
+        return res
+          .status(404)
+          .send({ error: true, data: { message: "Wrong credentials." } });
+      }
+      const isMatch: boolean = await comparePassword(
+        user.password,
+        users[0].password
+      );
+      if (!isMatch) {
+        return res
+          .status(400)
+          .send({ error: true, data: { message: "Wrong credentials." } });
+      }
+      const accessToken: string = generateToken(
+        users[0].user_id,
+        config.AUTH.ACCESS_TOKEN_SECRET,
+        config.AUTH.ACCESS_TOKEN_EXPIRATION
+      );
+      const refreshToken: string = generateToken(
+        users[0].user_id,
+        config.AUTH.REFRESH_TOKEN_SECRET,
+        config.AUTH.REFRESH_TOKEN_EXPIRATION
+      );
+      refreshTokens.push(refreshToken);
+      return res.status(200).send({
+        error: false,
+        data: {
+          message: "Signed in successfully.",
+          user: {
+            user_id: users[0].user_id,
+            username: users[0].username,
+            email: users[0].email,
+          },
+          accessToken,
+          refreshToken,
+        },
+      });
+    } catch (err) {
+      return res.status(400).send({
+        error: true,
+        data: { message: "Unable to sign in.", error: err },
+      });
+    }
+  }
+  public static async signOut(req: Request, res: Response): Promise<Response> {
+    if (!req.body.refreshToken) {
+      return res
+        .status(400)
+        .send({
+          error: true,
+          data: { message: "No refreshToken was provided." },
+        });
+    }
+    if (!refreshTokens.includes(req.body.refreshToken)) {
+      return res
+        .status(400)
+        .send({ error: true, data: { message: "Refresh Token Invalid." } });
+    }
+    try {
+      refreshTokens = refreshTokens.filter(
+        (reToken) => reToken != req.body.refreshToken
+      );
+      return res
+        .status(200)
+        .send({ error: false, data: { message: "Signed out successfully." } });
+    } catch (err) {
+      return res
+        .status(500)
+        .send({
+          error: true,
+          data: { message: "Unable to sign out.", error: err },
+        });
     }
   }
 }
