@@ -26,21 +26,20 @@ export default class UserController {
   ): Promise<Response> {
     try {
       if (!req.body.refreshToken) {
-        return res
-          .status(400)
-          .send({ error: true, data: "No refreshToken was provided." });
+        return res.status(400).send({
+          error: true,
+          data: { message: "No refreshToken was provided." },
+        });
       }
       if (!refreshTokens.includes(req.body.refreshToken)) {
         return res
           .status(400)
-          .send({ error: true, data: "Refresh token invalid." });
+          .send({ error: true, data: { message: "Refresh token invalid." } });
       }
       refreshTokens = refreshTokens.filter(
         (reToken) => reToken != req.body.refreshToken
       );
-
       const payload = jwt.decode(req.body.refreshToken) as IPayload;
-
       const accessToken: string = generateToken(
         payload.id,
         config.AUTH.ACCESS_TOKEN_SECRET,
@@ -122,7 +121,6 @@ export default class UserController {
         [newUser]
       );
       const resultSetHeader = response[0] as IResultSetHeader;
-
       const accessToken: string = generateToken(
         resultSetHeader.insertId,
         config.AUTH.ACCESS_TOKEN_SECRET,
@@ -265,7 +263,7 @@ export default class UserController {
       return res.status(200).send({
         error: false,
         data: {
-          message: "Found user successfully.",
+          message: "Profile obtained successfully.",
           user: users[0],
         },
       });
@@ -307,17 +305,53 @@ export default class UserController {
       return res.status(200).send({
         error: false,
         data: {
-          message: "User updated successfully.",
+          message: "Profile updated successfully.",
           user: updatedUser,
         },
       });
     } catch (err) {
+      return res.status(400).send({
+        error: true,
+        data: { message: "Unable to update profile.", error: err },
+      });
+    }
+  }
+  public static async deleteProfile(
+    req: Request,
+    res: Response
+  ): Promise<Response> {
+    const { user_id } = req;
+    if (!req.body.refreshToken) {
+      return res.status(400).send({
+        error: true,
+        data: { message: "No refreshToken was provided." },
+      });
+    }
+    if (!refreshTokens.includes(req.body.refreshToken)) {
       return res
         .status(400)
-        .send({
-          error: true,
-          data: { message: "Unable to update user.", error: err },
-        });
+        .send({ error: true, data: { message: "Refresh token invalid." } });
+    }
+    try {
+      const conn = await connect();
+      await conn.query(`DELETE FROM users WHERE user_id = ?`, [user_id]);
+      refreshTokens = refreshTokens.filter(
+        (reToken) => reToken != req.body.refreshToken
+      );
+      return res.status(200).send({
+        error: false,
+        data: {
+          message: "Profile deleted successfully",
+          user: {
+            user_id,
+          },
+        },
+      });
+    } catch (err) {
+      return res.status(500).send({
+        error: true,
+        data: { message: "Unable to delete profile.", error: err },
+      });
     }
   }
 }
