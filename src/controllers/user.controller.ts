@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
-import { Pool } from "mysql2";
 import config from "../config/config";
 import { connect } from "../db/mysql.connection";
 import {
