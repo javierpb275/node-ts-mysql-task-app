@@ -181,7 +181,7 @@ export default class UserController {
       }
       const isMatch: boolean = await comparePassword(
         user.password,
-        users[0].password
+        users[0].password!
       );
       if (!isMatch) {
         return res
@@ -274,6 +274,50 @@ export default class UserController {
         error: true,
         data: { message: "Unable to get profile.", error: err },
       });
+    }
+  }
+  public static async updateProfile(
+    req: Request,
+    res: Response
+  ): Promise<Response> {
+    const { body, user_id } = req;
+    const updatedUser: UserModel = body;
+    const isValid: boolean = validateObjectProperties(updatedUser, [
+      "username",
+      "email",
+      "password",
+    ]);
+    if (!isValid) {
+      return res.status(400).send({
+        error: true,
+        data: { message: "Invalid Properties." },
+      });
+    }
+    try {
+      const conn = await connect();
+      if (updatedUser.password) {
+        const hash: string = await hashPassword(updatedUser.password);
+        updatedUser.password = hash;
+      }
+      await conn.query(`UPDATE users set ? WHERE user_id = ?`, [
+        updatedUser,
+        user_id,
+      ]);
+      delete updatedUser.password;
+      return res.status(200).send({
+        error: false,
+        data: {
+          message: "User updated successfully.",
+          user: updatedUser,
+        },
+      });
+    } catch (err) {
+      return res
+        .status(400)
+        .send({
+          error: true,
+          data: { message: "Unable to update user.", error: err },
+        });
     }
   }
 }
