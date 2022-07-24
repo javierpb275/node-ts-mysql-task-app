@@ -221,12 +221,10 @@ export default class UserController {
   }
   public static async signOut(req: Request, res: Response): Promise<Response> {
     if (!req.body.refreshToken) {
-      return res
-        .status(400)
-        .send({
-          error: true,
-          data: { message: "No refreshToken was provided." },
-        });
+      return res.status(400).send({
+        error: true,
+        data: { message: "No refreshToken was provided." },
+      });
     }
     if (!refreshTokens.includes(req.body.refreshToken)) {
       return res
@@ -241,12 +239,41 @@ export default class UserController {
         .status(200)
         .send({ error: false, data: { message: "Signed out successfully." } });
     } catch (err) {
-      return res
-        .status(500)
-        .send({
-          error: true,
-          data: { message: "Unable to sign out.", error: err },
-        });
+      return res.status(500).send({
+        error: true,
+        data: { message: "Unable to sign out.", error: err },
+      });
+    }
+  }
+  public static async getProfile(
+    req: Request,
+    res: Response
+  ): Promise<Response> {
+    const { user_id } = req;
+    try {
+      const conn = await connect();
+      const response: any[] = await conn.query(
+        `SELECT user_id, email, username FROM users WHERE user_id = ?`,
+        [user_id]
+      );
+      const users: UserModel[] = response[0];
+      if (!users.length) {
+        return res
+          .status(404)
+          .send({ error: true, data: { message: "User Not Found." } });
+      }
+      return res.status(200).send({
+        error: false,
+        data: {
+          message: "Found user successfully.",
+          user: users[0],
+        },
+      });
+    } catch (err) {
+      return res.status(500).send({
+        error: true,
+        data: { message: "Unable to get profile.", error: err },
+      });
     }
   }
 }
